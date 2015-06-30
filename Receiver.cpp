@@ -26,6 +26,20 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  if (setsockopt(recv_fd, SOL_SOCKET, SO_BINDTODEVICE,
+                 "lo", 3) < 0) {
+    fprintf(stderr, "set socket option SO_BINDTODEVICE failed\n");
+    return -1;
+  }
+
+  struct timeval tv;
+  tv.tv_usec = 0;
+  tv.tv_sec = 60;
+  if (setsockopt(recv_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+    fprintf(stderr, "set socket option SO_RCVTIMEO failed\n");
+    return -1;
+  }
+
   char buf[4096];
   while (1) {
     int nrecv = recv(recv_fd, buf, sizeof(buf), 0);
