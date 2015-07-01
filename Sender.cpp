@@ -19,9 +19,9 @@ int main(int argc, char** argv) {
   }
   printf("proto is %d\n", proto);
   
-  int family = AF_INET;
+  int family = AF_INET6;
 
-  int send_fd = socket(family, SOCK_STREAM, IPPROTO_TCP);
+  int send_fd = socket(family, SOCK_RAW, proto);
   if (send_fd < 0) {
     fprintf(stderr, "create send socket failed\n");
     return -1;
@@ -57,14 +57,14 @@ int main(int argc, char** argv) {
   char buf[32];
   strncpy(buf, "hello\0", 6);
 
-  sockaddr_in dest;
+  sockaddr_in6 dest;
   memset(&dest, 0, sizeof(dest));
-  dest.sin_family = family;
-  // for (int i = 0; i < 16; i++) {
-  //   dest.sin6_addr.s6_addr[i] = 0;
-  // }
-  // dest.sin6_addr.s6_addr[15] = 1;
-  inet_aton("127.0.0.1", &dest.sin_addr);
+  dest.sin6_family = family;
+  for (int i = 0; i < 16; i++) {
+    dest.sin6_addr.s6_addr[i] = 0;
+  }
+  dest.sin6_addr.s6_addr[15] = 1;
+  // inet_aton("127.0.0.1", &dest.sin_addr);
   int nsent = sendto(send_fd, buf, 6, 0,
                      reinterpret_cast<sockaddr*>(&dest), sizeof(dest));
   if (nsent < 0) {

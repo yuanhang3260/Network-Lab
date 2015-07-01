@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
   }
   printf("proto is %d\n", proto);
 
-  int recv_fd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
+  int recv_fd = socket(AF_INET6, SOCK_RAW, 112);
   if (recv_fd < 0) {
     fprintf(stderr, "create receive socket failed\n");
     return -1;
@@ -73,24 +73,24 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Received " << nrecv << " bytes" << std::endl;
-    struct iphdr* ip_header = reinterpret_cast<struct iphdr*>(buf);
-    std::cout << "src addr "
-              << inet_ntoa(*reinterpret_cast<in_addr*>(&ip_header->saddr))
-              << std::endl;
-    std::cout << "dst addr "
-              << inet_ntoa(*reinterpret_cast<in_addr*>(&ip_header->daddr))
-              << std::endl;
-    printf("protocol %x\n", *reinterpret_cast<uint8_t*>(&ip_header->protocol));
-    std::cout << "src port "
-              << ntohs(*reinterpret_cast<unsigned short*>(buf + sizeof(struct iphdr)))
-              << std::endl;
-    buf[nrecv] = '\0';
-    std::cout << "content: "
-              << std::string(buf + sizeof(struct iphdr) + 20, nrecv - 40)
-              << std::endl;
-    // std::cout << "content: "
-    //           << std::string(buf, nrecv)
+    // struct iphdr* ip_header = reinterpret_cast<struct iphdr*>(buf);
+    // std::cout << "src addr "
+    //           << inet_ntoa(*reinterpret_cast<in_addr*>(&ip_header->saddr))
     //           << std::endl;
+    // std::cout << "dst addr "
+    //           << inet_ntoa(*reinterpret_cast<in_addr*>(&ip_header->daddr))
+    //           << std::endl;
+    // printf("protocol %x\n", *reinterpret_cast<uint8_t*>(&ip_header->protocol));
+    // std::cout << "src port "
+    //           << ntohs(*reinterpret_cast<unsigned short*>(buf + sizeof(struct iphdr)))
+    //           << std::endl;
+    // buf[nrecv] = '\0';
+    // std::cout << "content: "
+    //           << std::string(buf + sizeof(struct iphdr) + 20, nrecv - 40)
+    //           << std::endl;
+    std::cout << "content: "
+              << std::string(buf, nrecv)
+              << std::endl;
   }
   return 0;
 }
