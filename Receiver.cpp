@@ -5,7 +5,6 @@
 #include <netinet/ip.h>       // IP_MAXPACKET (65535)
 #include <sys/types.h>        // needed for socket(), uint8_t, uint16_t
 #include <sys/socket.h>       // needed for socket()
-#include <linux/if_ether.h>   // ETH_P_ARP = 0x0806, ETH_P_ALL = 0x0003
 #include <net/ethernet.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
@@ -53,7 +52,7 @@ int main(int argc, char** argv) {
   }
 
   in6_addr multicast_ip;
-  inet_pton(AF_INET6, "ff01::01", &multicast_ip);
+  inet_pton(AF_INET6, "ff02::12", &multicast_ip);
   ConfigureReceiveMulticast(recv_fd, true, multicast_ip);
 
   struct timeval tv;
