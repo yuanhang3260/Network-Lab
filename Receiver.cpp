@@ -13,6 +13,26 @@
 
 #include <iostream>
 
+int ConfigureReceiveMulticast(
+    int fd,
+    bool join_multicast_group,
+    const in6_addr& multicast_ip) {
+  
+  struct ipv6_mreq req;
+
+  memset(&req, 0, sizeof(req));
+
+  memmove(&req.ipv6mr_multiaddr, &multicast_ip, sizeof(req.ipv6mr_multiaddr));
+  req.ipv6mr_interface = 1;
+
+  int op = join_multicast_group ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
+  if (setsockopt(fd, IPPROTO_IPV6, op, &req, sizeof(req))) {
+    fprintf(stderr, "change multicast group failed\n");
+    return -1;
+  }
+  return 0;
+}
+
 int main(int argc, char** argv) {
   int proto = 112;
   if (argc > 1) {
@@ -31,6 +51,10 @@ int main(int argc, char** argv) {
     fprintf(stderr, "set socket option SO_BINDTODEVICE failed\n");
     return -1;
   }
+
+  in6_addr multicast_ip;
+  inet_pton(AF_INET6, "ff01::01", &multicast_ip);
+  ConfigureReceiveMulticast(recv_fd, true, multicast_ip);
 
   struct timeval tv;
   tv.tv_usec = 0;
