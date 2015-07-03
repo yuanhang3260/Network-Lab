@@ -22,7 +22,7 @@ int ConfigureReceiveMulticast(
   memset(&req, 0, sizeof(req));
 
   memmove(&req.ipv6mr_multiaddr, &multicast_ip, sizeof(req.ipv6mr_multiaddr));
-  req.ipv6mr_interface = 1;
+  req.ipv6mr_interface = 0;
 
   int op = join_multicast_group ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
   if (setsockopt(fd, IPPROTO_IPV6, op, &req, sizeof(req))) {
@@ -46,14 +46,14 @@ int main(int argc, char** argv) {
   }
 
   if (setsockopt(recv_fd, SOL_SOCKET, SO_BINDTODEVICE,
-                 "lo", 3) < 0) {
+                 "wlan0", 6) < 0) {
     fprintf(stderr, "set socket option SO_BINDTODEVICE failed\n");
     return -1;
   }
 
   in6_addr multicast_ip;
-  inet_pton(AF_INET6, "ff02::12", &multicast_ip);
-  ConfigureReceiveMulticast(recv_fd, true, multicast_ip);
+  inet_pton(AF_INET6, "ff15::1", &multicast_ip);
+  //onfigureReceiveMulticast(recv_fd, true, multicast_ip);
 
   struct timeval tv;
   tv.tv_usec = 0;

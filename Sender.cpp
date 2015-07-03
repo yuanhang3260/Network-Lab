@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
   //   fprintf(stderr, "set socket option IP_HDRINCL failed\n");
   //   return -1;
   // }
-  
+
   int socket_priority = 0;
   if (setsockopt(send_fd, SOL_SOCKET, SO_PRIORITY,
                  &socket_priority, sizeof(socket_priority)) < 0) {
@@ -39,12 +39,12 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // uint32_t x = 1;
-  // if (setsockopt(send_fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
-  //                &x, sizeof(x)) < 0) {
-  //   fprintf(stderr, "set socket option IPV6_MULTICAST_LOOP failed\n");
-  //   return -1;
-  // }
+  uint32_t x = 1;
+  if (setsockopt(send_fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
+                 &x, sizeof(x)) < 0) {
+    fprintf(stderr, "set socket option IPV6_MULTICAST_LOOP failed\n");
+    return -1;
+  }
 
   int is_on = 1;
   if (setsockopt(send_fd, SOL_SOCKET, SO_BROADCAST,
@@ -59,9 +59,9 @@ int main(int argc, char** argv) {
   sockaddr_in6 dest;
   memset(&dest, 0, sizeof(dest));
   dest.sin6_family = family;
-  
-  inet_pton(AF_INET6, "ff02::12", &dest.sin6_addr);
-  // dest.sin6_addr.s6_addr[15] = 0x1;
+
+  inet_pton(AF_INET6, "ff01::1", &dest.sin6_addr);
+  // inet_pton(AF_INET6, "fe80::62f8:1dff:fec7:a6fc", &dest.sin6_addr);
   // inet_aton("127.0.0.1", &dest.sin_addr);
   int nsent = sendto(send_fd, buf, 6, 0,
                      reinterpret_cast<sockaddr*>(&dest), sizeof(dest));
