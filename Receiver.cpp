@@ -9,20 +9,25 @@
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
+#include <net/if.h>
 
 #include <iostream>
 
 int ConfigureReceiveMulticast(
     int fd,
     bool join_multicast_group,
-    const in6_addr& multicast_ip) {
+    const char* ip,
+    const char* dev) {
   
+  in6_addr multicast_ip;
+  inet_pton(AF_INET6, ip, &multicast_ip);
+
   struct ipv6_mreq req;
 
   memset(&req, 0, sizeof(req));
 
   memmove(&req.ipv6mr_multiaddr, &multicast_ip, sizeof(req.ipv6mr_multiaddr));
-  req.ipv6mr_interface = 0;
+  req.ipv6mr_interface = if_nametoindex(dev);
 
   int op = join_multicast_group ? IPV6_ADD_MEMBERSHIP : IPV6_DROP_MEMBERSHIP;
   if (setsockopt(fd, IPPROTO_IPV6, op, &req, sizeof(req))) {
@@ -32,36 +37,44 @@ int ConfigureReceiveMulticast(
   return 0;
 }
 
+int ConfigureReceiveTimeout(int fd, int time) {
+  struct timeval tv;
+  tv.tv_usec = 0;
+  tv.tv_sec = time;
+  if (setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
+    fprintf(stderr, "set socket option SO_RCVTIMEO failed\n");
+    return -1;
+  }
+  return 0;
+}
+
+int ConfigureBindToDevice(int fd, const char* dev) {
+  if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE,
+                 dev, strlen(dev) + 1) < 0) {
+    fprintf(stderr, "set socket option SO_BINDTODEVICE failed\n");
+    return -1;
+  }
+  return 0;
+}
+
 int main(int argc, char** argv) {
+
   int proto = 112;
   if (argc > 1) {
     proto = atoi(argv[1]);
   }
-  printf("proto is %d\n", proto);
 
-  int recv_fd = socket(AF_INET6, SOCK_RAW, 112);
+  const char* dev_name = "wlan0";
+
+  int recv_fd = socket(AF_INET6, SOCK_RAW, proto);
   if (recv_fd < 0) {
     fprintf(stderr, "create receive socket failed\n");
     return -1;
   }
 
-  if (setsockopt(recv_fd, SOL_SOCKET, SO_BINDTODEVICE,
-                 "wlan0", 6) < 0) {
-    fprintf(stderr, "set socket option SO_BINDTODEVICE failed\n");
-    return -1;
-  }
-
-  in6_addr multicast_ip;
-  inet_pton(AF_INET6, "ff15::1", &multicast_ip);
-  //onfigureReceiveMulticast(recv_fd, true, multicast_ip);
-
-  struct timeval tv;
-  tv.tv_usec = 0;
-  tv.tv_sec = 60;
-  if (setsockopt(recv_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0) {
-    fprintf(stderr, "set socket option SO_RCVTIMEO failed\n");
-    return -1;
-  }
+  ConfigureBindToDevice(recv_fd, dev_name);
+  ConfigureReceiveMulticast(recv_fd, true, "ff15::01", dev_name);
+  ConfigureReceiveTimeout(recv_fd, 60);
 
   char buf[4096];
   while (1) {

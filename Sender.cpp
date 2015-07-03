@@ -11,6 +11,42 @@
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 
+int ConfigureIPHeaderInclude(int fd) {
+  int on = 1;
+  if (setsockopt(fd, IPPROTO_IPV6, IP_HDRINCL, &on, sizeof(on)) < 0) {
+    fprintf(stderr, "set socket option IP_HDRINCL failed\n");
+    return -1;
+  }
+  return 0;
+}
+
+int ConfigureSocketPriority(int fd, int priority) {
+  if (setsockopt(fd, SOL_SOCKET, SO_PRIORITY,
+                 &priority, sizeof(priority)) < 0) {
+    fprintf(stderr, "set socket option SO_PRIORITY failed\n");
+    return -1;
+  }
+  return 0;
+}
+
+int ConfigureSendMulticastLoop(int fd, int x) {
+  if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
+                 &x, sizeof(x)) < 0) {
+    fprintf(stderr, "set socket option IPV6_MULTICAST_LOOP failed\n");
+    return -1;
+  }
+  return 0;
+}
+
+int ConfigureSendBroadcast(int fd, int x) {
+  if (setsockopt(fd, SOL_SOCKET, SO_BROADCAST,
+                 &x, sizeof(x)) < 0) {
+    fprintf(stderr, "set socket option SO_BROADCAST failed\n");
+    return -1;
+  }
+  return 0;
+}
+
 int main(int argc, char** argv) {
   int proto = 112;
   if (argc > 1) {
@@ -26,32 +62,10 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  // int on = 1;
-  // if (setsockopt(send_fd, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on)) < 0) {
-  //   fprintf(stderr, "set socket option IP_HDRINCL failed\n");
-  //   return -1;
-  // }
-
-  int socket_priority = 0;
-  if (setsockopt(send_fd, SOL_SOCKET, SO_PRIORITY,
-                 &socket_priority, sizeof(socket_priority)) < 0) {
-    fprintf(stderr, "set socket option SO_PRIORITY failed\n");
-    return -1;
-  }
-
-  uint32_t x = 1;
-  if (setsockopt(send_fd, IPPROTO_IPV6, IPV6_MULTICAST_LOOP,
-                 &x, sizeof(x)) < 0) {
-    fprintf(stderr, "set socket option IPV6_MULTICAST_LOOP failed\n");
-    return -1;
-  }
-
-  int is_on = 1;
-  if (setsockopt(send_fd, SOL_SOCKET, SO_BROADCAST,
-                 &is_on, sizeof(is_on)) < 0) {
-    fprintf(stderr, "set socket option SO_BROADCAST failed\n");
-    return -1;
-  }
+  // ConfigureIPHeaderInclude(send_fd);
+  ConfigureSocketPriority(send_fd, 0);
+  ConfigureSendMulticastLoop(send_fd, 1);
+  ConfigureSendBroadcast(send_fd, 1);
 
   char buf[32];
   strncpy(buf, "hello\0", 6);
@@ -60,7 +74,7 @@ int main(int argc, char** argv) {
   memset(&dest, 0, sizeof(dest));
   dest.sin6_family = family;
 
-  inet_pton(AF_INET6, "ff01::1", &dest.sin6_addr);
+  inet_pton(AF_INET6, "ff15::1", &dest.sin6_addr);
   // inet_pton(AF_INET6, "fe80::62f8:1dff:fec7:a6fc", &dest.sin6_addr);
   // inet_aton("127.0.0.1", &dest.sin_addr);
   int nsent = sendto(send_fd, buf, 6, 0,
