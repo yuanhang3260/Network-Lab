@@ -75,6 +75,8 @@ int main(int argc, char** argv) {
   dest.sin6_family = family;
 
   inet_pton(AF_INET6, "ff15::1", &dest.sin6_addr);
+  // inet_pton(AF_INET6, "ff01::1", &dest.sin6_addr);
+  // inet_pton(AF_INET6, "ff02::1", &dest.sin6_addr);
   // inet_pton(AF_INET6, "fe80::62f8:1dff:fec7:a6fc", &dest.sin6_addr);
   // inet_aton("127.0.0.1", &dest.sin_addr);
   int nsent = sendto(send_fd, buf, 6, 0,
