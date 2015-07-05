@@ -63,17 +63,19 @@ static void ping(const char *host) {
   // drop root privs if running setuid
   setuid(getuid());
 
+  if (!(h = gethostbyname(host))) {
+    fprintf(stderr, "ping: unknown host %s\n", host);
+    exit(1);
+  }
+
   // listen for replies
   int ii = 0;
-  for (ii = 0; ii < 5; ii++) {
+  for (ii = 0; ii < 10000; ii++) {
+    sleep(1);
     memset(packet, 0, sizeof(packet));
     memset(&pingaddr, 0, sizeof(struct sockaddr_in));
 
     pingaddr.sin_family = AF_INET;
-    if (!(h = gethostbyname(host))) {
-      fprintf(stderr, "ping: unknown host %s\n", host);
-      exit(1);
-    }
     memcpy(&pingaddr.sin_addr, h->h_addr, sizeof(pingaddr.sin_addr));
     hostname = h->h_name;
 
@@ -81,21 +83,18 @@ static void ping(const char *host) {
     pkt->type = ICMP_ECHO;
     pkt->un.echo.sequence = 50;  // just some random number.
     pkt->un.echo.id = 48;        // just some random number.
-    *(packet + sizeof(struct icmp)) = 't';
-    *(packet + sizeof(struct icmp) + 1) = 'e';
-    *(packet + sizeof(struct icmp) + 2) = 's';
-    *(packet + sizeof(struct icmp) + 3) = 't';
+    // *(packet + sizeof(struct icmp)) = 't';
+    // *(packet + sizeof(struct icmp) + 1) = 'e';
+    // *(packet + sizeof(struct icmp) + 2) = 's';
+    // *(packet + sizeof(struct icmp) + 3) = 't';
     pkt->checksum = in_cksum((unsigned short *) pkt, sizeof(packet));
 
     c = sendto(pingsock, packet, sizeof(struct icmphdr), 0,
                (struct sockaddr *) &pingaddr, sizeof(struct sockaddr_in));
 
-    if (c < 0 || c != sizeof(struct icmphdr)) {
-      if (c < 0) {
-        perror("ping: sendto");
-      }
+    if (c < 0) {
       fprintf(stderr, "ping: write incomplete\n");
-      exit(1);
+      continue;
     }
 
     //signal(SIGALRM, noresp);
@@ -116,8 +115,9 @@ static void ping(const char *host) {
       struct iphdr *iphdr = (struct iphdr *) packet;
 
       struct icmphdr* icmp_hdr = (struct icmphdr *) (packet + (iphdr->ihl << 2));  // skip ip hdr
-      printf("id = %d\n", icmp_hdr->un.echo.id);
-      printf("sequence = %d\n", icmp_hdr->un.echo.sequence);
+      printf("id = %d, sequence = %d\n",
+             icmp_hdr->un.echo.id, icmp_hdr->un.echo.sequence);
+      printf("type = %d, code = %d\n", icmp_hdr->type, icmp_hdr->code);
       if (icmp_hdr->type != ICMP_ECHOREPLY) {
         break;
       }

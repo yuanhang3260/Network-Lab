@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  ConfigureReceiveTimeout(fd, 3);
+  ConfigureReceiveTimeout(fd, 2);
 
   char buf[sizeof(struct icmphdr) + 32];
   struct icmphdr* icmp_hdr = (struct icmphdr*)buf;
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
     memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
     memcpy(&addr.sin_addr, h->h_addr, sizeof(addr.sin_addr));
-  
+
     // finally, send the packet.
     int rc = sendto(fd,
                     buf,
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
                     sizeof(addr));
     packets_sent++;
     if (rc == -1) {
-      fprintf(stderr, "ERROR: Send ICMP failed\n");
+      printf("Send ICMP failed\n");
       sleep(1);
       continue;
     }
@@ -137,48 +137,52 @@ int main(int argc, char** argv) {
 
     // Receive the packet that we sent (since we sent it to ourselves,
     // and a raw socket sees everything...).
-    rc = recvfrom(fd,
-                  rbuf,
-                  sizeof(rbuf),
-                  0, // flags
-                  (struct sockaddr*)&raddr,
-                  &raddr_len);
-    if (rc == -1) {
-      fprintf(stderr, "ERROR: Receive ICMP reply failed\n");
-      sleep(1);
-      continue;
-    }
-
     struct iphdr* iphdr = NULL;
     struct icmphdr* recv_icmphdr = NULL;
+    int resend = 0;
+    while(1) {
+      rc = recvfrom(fd,
+                    rbuf,
+                    sizeof(rbuf),
+                    0, // flags
+                    (struct sockaddr*)&raddr,
+                    &raddr_len);
+      if (rc == -1) {
+        resend = 1;
+        break;
+      }
 
-    // we got an IP packet - verify that it contains an ICMP message.
-    iphdr = (struct iphdr*)rbuf;
-    if (iphdr->protocol != IPPROTO_ICMP) {
-      fprintf(stderr, "Expected ICMP packet, got %u\n", iphdr->protocol);
-      sleep(1);
-      continue;
+      // we got an IP packet - verify that it contains an ICMP message.
+      iphdr = (struct iphdr*)rbuf;
+      if (iphdr->protocol != IPPROTO_ICMP) {
+        fprintf(stderr, "Expected ICMP packet, got %u\n", iphdr->protocol);
+        continue;
+      }
+
+      // verify that it's an ICMP echo request, with the expected seq. num + id.
+      recv_icmphdr = (struct icmphdr*)(rbuf + (iphdr->ihl * 4));
+      // printf("type = %d, code = %d\n", recv_icmphdr->type, recv_icmphdr->code);
+      // printf("from remote server %s to local\n",
+      //        inet_ntoa(*((struct in_addr*)&iphdr->saddr)));
+      if (recv_icmphdr->type != ICMP_ECHOREPLY) {
+        fprintf(stderr, "Expected ICMP echo-reply, got %u\n",
+                        recv_icmphdr->type);
+        continue;
+      }
+      if (recv_icmphdr->un.echo.sequence != sequence - 1) {
+        fprintf(stderr, "Expected sequence %d, got %d\n", 
+                sequence - 1,
+                recv_icmphdr->un.echo.sequence);
+        continue;
+      }
+      if (recv_icmphdr->un.echo.id != 5) {
+        fprintf(stderr, "Expected id 5, got %d\n", recv_icmphdr->un.echo.id);
+        continue;
+      }
+      break;
     }
 
-    // verify that it's an ICMP echo request, with the expected seq. num + id.
-    recv_icmphdr = (struct icmphdr*)(rbuf + (iphdr->ihl * 4));
-    if (recv_icmphdr->type != ICMP_ECHOREPLY) {
-      fprintf(stderr, "Expected ICMP echo-reply, got %u\n", recv_icmphdr->type);
-      sleep(1);
-      continue;
-    }
-    if (recv_icmphdr->un.echo.sequence != sequence - 1) {
-      fprintf(stderr,
-              "Expected sequence %d, got %d\n", 
-              sequence - 1,
-              recv_icmphdr->un.echo.sequence);
-      sleep(1);
-      continue;
-    }
-    if (recv_icmphdr->un.echo.id != 5) {
-      fprintf(stderr,
-              "Expected id 5, got %d\n", recv_icmphdr->un.echo.id);
-      sleep(1);
+    if (resend) {
       continue;
     }
 
@@ -189,6 +193,7 @@ int main(int argc, char** argv) {
            recv_icmphdr->un.echo.sequence,
            iphdr->ttl
            );
+
     fprintf(stderr, "received data: ");
     int i = 0;
     for (i = 0; i < 32; i++) {
