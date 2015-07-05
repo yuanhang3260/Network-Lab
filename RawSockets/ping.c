@@ -89,11 +89,11 @@ int main(int argc, char** argv) {
   ConfigureReceiveTimeout(fd, 3);
 
   char buf[sizeof(struct icmphdr) + 32];
-  struct icmphdr* icmp_hdr = reinterpret_cast<struct icmphdr*>(buf);
+  struct icmphdr* icmp_hdr = (struct icmphdr*)buf;
   int sequence = 1;
   printf("PING %s (%s) %d(%d) bytes of data.\n",
          hostname,
-         inet_ntoa(*reinterpret_cast<struct in_addr*>(h->h_addr)),
+         inet_ntoa(*((struct in_addr*)h->h_addr)),
          56,
          84);
 
@@ -185,12 +185,13 @@ int main(int argc, char** argv) {
     packets_received++;
     printf("%d bytes from %s: icmp_seq = %d ttl = %d\n",
            rc,
-           inet_ntoa(*reinterpret_cast<struct in_addr*>(h->h_addr)),
+           inet_ntoa(*((struct in_addr*)h->h_addr)),
            recv_icmphdr->un.echo.sequence,
            iphdr->ttl
            );
     fprintf(stderr, "received data: ");
-    for (int i = 0; i < 32; i++) {
+    int i = 0;
+    for (i = 0; i < 32; i++) {
       char c = rbuf[sizeof(struct iphdr) + sizeof(struct icmphdr) + i];
       if (isascii(c)) {
         fprintf(stderr, "%c", c);

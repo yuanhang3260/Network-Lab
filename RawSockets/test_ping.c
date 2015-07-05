@@ -64,7 +64,8 @@ static void ping(const char *host) {
   setuid(getuid());
 
   // listen for replies
-  for (int ii = 0; ii < 10; ii++) {
+  int ii = 0;
+  for (ii = 0; ii < 5; ii++) {
     memset(packet, 0, sizeof(packet));
     memset(&pingaddr, 0, sizeof(struct sockaddr_in));
 
@@ -117,11 +118,6 @@ static void ping(const char *host) {
       struct icmphdr* icmp_hdr = (struct icmphdr *) (packet + (iphdr->ihl << 2));  // skip ip hdr
       printf("id = %d\n", icmp_hdr->un.echo.id);
       printf("sequence = %d\n", icmp_hdr->un.echo.sequence);
-      printf("data: \n");
-      for (char* c = (char*)icmp_hdr + sizeof(struct icmphdr); c < packet + sizeof(packet); c++) {
-        printf("%x", *c);
-      }
-      printf("\n");
       if (icmp_hdr->type != ICMP_ECHOREPLY) {
         break;
       }

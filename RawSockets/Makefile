@@ -1,13 +1,13 @@
-CC=g++ -std=c++11
+CC=gcc
 CFLAGS=-Wall -Werror -O2
 
 all: ping test_ping
 
-ping: ping.cpp
-		$(CC) ping.cpp -o ping
+ping: ping.c
+		$(CC) ping.c -o ping
 
-test_ping: test_ping.cpp
-		$(CC) test_ping.cpp -o test_ping
+test_ping: test_ping.c
+		$(CC) test_ping.c -o test_ping
 
 clean:
 	 	rm -rf test_ping ping
