@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
 
   ConfigureReceiveTimeout(fd, 2);
 
-  char buf[sizeof(struct icmphdr) + 32];
+  char buf[sizeof(struct icmphdr) + 96];
   struct icmphdr* icmp_hdr = (struct icmphdr*)buf;
   int sequence = 1;
   printf("PING %s (%s) %d(%d) bytes of data.\n",
@@ -99,16 +99,26 @@ int main(int argc, char** argv) {
 
   while (1) {
     // clear out the packet, and fill with contents.
-    memset(icmp_hdr, 0, sizeof(struct icmphdr));
-    icmp_hdr->type = ICMP_ECHO;
+    memset(icmp_hdr, 0, sizeof(buf));
+    icmp_hdr->type = ICMP_TIMESTAMP;
+    // icmp_hdr->type = ICMP_ECHO;
+    icmp_hdr->code = 0;
     icmp_hdr->un.echo.sequence = sequence++;  // just some random number.
-    icmp_hdr->un.echo.id = 5;        // just some random number.
-    buf[sizeof(struct icmphdr) + 0] = 't';
-    buf[sizeof(struct icmphdr) + 1] = 'e';
-    buf[sizeof(struct icmphdr) + 2] = 's';
-    buf[sizeof(struct icmphdr) + 3] = 't';
-    icmp_hdr->checksum = in_cksum((unsigned short*)icmp_hdr,
-                                  sizeof(buf));
+    icmp_hdr->un.echo.id = 0;        // just some random number.
+    // buf[sizeof(struct icmphdr) + 0] = 't';
+    // buf[sizeof(struct icmphdr) + 1] = 'e';
+    // buf[sizeof(struct icmphdr) + 2] = 's';
+    // buf[sizeof(struct icmphdr) + 3] = 't';
+    struct timeval tv;
+    int msec = -1;
+    if (gettimeofday(&tv, NULL) == 0) {
+        msec = ((tv.tv_sec % 86400) * 1000 + tv.tv_usec / 1000);
+    }
+    // TODO: add request timestamp
+    // *((unsigned*)(buf + sizeof(struct icmphdr))) = htonl(msec);
+    // *((unsigned*)(buf + sizeof(struct icmphdr) + 32)) = htonl(msec);
+    // *((unsigned*)(buf + sizeof(struct icmphdr) + 64)) = htonl(msec);
+    icmp_hdr->checksum = in_cksum((unsigned short*)icmp_hdr, sizeof(buf));
 
     struct sockaddr_in addr;
     memset(&addr, 0, sizeof(addr));
@@ -131,7 +141,7 @@ int main(int argc, char** argv) {
 
     // Receive echo reply
     // The received packet contains the IP header.
-    char rbuf[sizeof(struct iphdr) + sizeof(struct icmp) + 256];
+    char rbuf[sizeof(struct iphdr) + sizeof(struct icmphdr) + 96];
     struct sockaddr_in raddr;
     socklen_t raddr_len = sizeof(raddr);
 
@@ -161,10 +171,11 @@ int main(int argc, char** argv) {
 
       // verify that it's an ICMP echo request, with the expected seq. num + id.
       recv_icmphdr = (struct icmphdr*)(rbuf + (iphdr->ihl * 4));
-      // printf("type = %d, code = %d\n", recv_icmphdr->type, recv_icmphdr->code);
+      printf("type = %d, code = %d\n", recv_icmphdr->type, recv_icmphdr->code);
       // printf("from remote server %s to local\n",
       //        inet_ntoa(*((struct in_addr*)&iphdr->saddr)));
-      if (recv_icmphdr->type != ICMP_ECHOREPLY) {
+      if (recv_icmphdr->type != ICMP_ECHOREPLY &&
+          recv_icmphdr->type != ICMP_TIMESTAMPREPLY) {
         fprintf(stderr, "Expected ICMP echo-reply, got %u\n",
                         recv_icmphdr->type);
         continue;
@@ -175,8 +186,8 @@ int main(int argc, char** argv) {
                 recv_icmphdr->un.echo.sequence);
         continue;
       }
-      if (recv_icmphdr->un.echo.id != 5) {
-        fprintf(stderr, "Expected id 5, got %d\n", recv_icmphdr->un.echo.id);
+      if (recv_icmphdr->un.echo.id != 0) {
+        fprintf(stderr, "Expected id 0, got %d\n", recv_icmphdr->un.echo.id);
         continue;
       }
       break;
@@ -188,7 +199,7 @@ int main(int argc, char** argv) {
 
     packets_received++;
     printf("%d bytes from %s: icmp_seq = %d ttl = %d\n",
-           rc,
+           rc - sizeof(struct iphdr) - sizeof(struct icmphdr),
            inet_ntoa(*((struct in_addr*)h->h_addr)),
            recv_icmphdr->un.echo.sequence,
            iphdr->ttl
