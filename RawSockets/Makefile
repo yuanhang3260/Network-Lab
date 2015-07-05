@@ -8,3 +8,6 @@ ping: ping.cpp
 
 test_ping: test_ping.cpp
 		$(CC) test_ping.cpp -o test_ping
+
+clean:
+	 	rm -rf test_ping ping
